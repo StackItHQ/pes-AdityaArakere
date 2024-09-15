@@ -1,0 +1,5 @@
+# Ignore credentials.json file
+credentials.json
+
+# Ignore timestamp.txt file
+last_sync_timestamp.txt
