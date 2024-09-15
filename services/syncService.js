@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const { getClient } = require('../config/googleSheets');
 const { getLastSyncTimestamp, setLastSyncTimestamp } = require('./timestampService');
-const { createTable, tableExists } = require('./tableService');
+const { createTable, tableExists, getColumnNames, alterTable } = require('./tableService');
 const db = require('../config/db');
 
 const googleSheets = google.sheets({ version: "v4" });
@@ -32,9 +32,8 @@ const syncSheetToDb = async () => {
 
         // Get the number of columns
         const columnCount = await getColumnCount(client, spreadsheetId);
-        // console.log('Column Count:', columnCount);
         const range = `Sheet1!A:${String.fromCharCode(65 + columnCount - 1)}`; // Construct range dynamically
-        console.log('Range:', range);
+
         // Read rows from spreadsheet
         const response = await googleSheets.spreadsheets.values.get({
             spreadsheetId,
@@ -57,6 +56,13 @@ const syncSheetToDb = async () => {
             const tableExistsFlag = await tableExists();
             if (!tableExistsFlag) {
                 await createTable(headers);
+            } else {
+                // Update table schema based on new headers
+                const existingColumns = await getColumnNames();
+                const newColumns = headers.slice(0, -1);
+                console.log('Existing Columns:', existingColumns);
+                console.log('New Columns:', newColumns);
+                await alterTable(existingColumns, newColumns);
             }
 
             const newData = newRows.map(row => {
@@ -116,20 +122,18 @@ const syncSheetToDb = async () => {
                     // Insert new row if no matching row found
                     const insertData = { ...newRow };
                     delete insertData['timestamp']; // Remove timestamp from insert data
-                    if (!newRow['Id'] == "") {
-                        await new Promise((resolve, reject) => {
-                            const insertQuery = 'INSERT INTO dynamic_table SET ?';
-                            db.query(insertQuery, insertData, (err) => {
-                                if (err) {
-                                    console.error('Error inserting data:', err);
-                                    reject(err);
-                                } else {
-                                    console.log(`Inserted ${newRow['Id']} into the database.`);
-                                    resolve();
-                                }
-                            });
+                    await new Promise((resolve, reject) => {
+                        const insertQuery = 'INSERT INTO dynamic_table SET ?';
+                        db.query(insertQuery, insertData, (err) => {
+                            if (err) {
+                                console.error('Error inserting data:', err);
+                                reject(err);
+                            } else {
+                                console.log(`Inserted ${newRow['Id']} into the database.`);
+                                resolve();
+                            }
                         });
-                    }
+                    });
                 }
             }
 
