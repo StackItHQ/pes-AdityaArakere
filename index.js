@@ -2,19 +2,17 @@ const express = require('express');
 const { syncSheetToDb } = require('./services/syncService');
 const { syncDbChangesToSheet } = require('./services/dbChangeListener');
 
-// Sync DB changes to Google Sheets every 5 seconds
-setInterval(syncDbChangesToSheet, 10000); // Check for changes every 5 seconds
-
 const app = express();
 app.use(express.json());
 
-app.get("/", async (req, res) => {
-    try {
-        await syncSheetToDb();
-        res.status(200).send('Sync completed successfully');
-    } catch (error) {
-        res.status(500).send('Error during sync: ' + error.message);
-    }
+// Sync DB changes to Google Sheets every 10 seconds
+setInterval(syncDbChangesToSheet, 9000); // Check for DB changes every 10 seconds
+
+// Sync Google Sheets to DB every 10 seconds
+setInterval(syncSheetToDb, 9000); // Check for changes in Google Sheets every 10 seconds
+
+app.get("/", (req, res) => {
+    res.status(200).send('Periodic synchronization in progress.');
 });
 
 app.listen(3000, () => {
