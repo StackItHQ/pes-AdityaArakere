@@ -60,17 +60,20 @@ All the best ✨.
 
 ## Developer's Section
 *Add your video here, and your approach to the problem (optional). Leave some comments for us here if you want, we will be reading this :)*
-Current Approach:
+
+## Current Approach:
 
 Google Sheets API:
+
 I'm using the Google Sheets API to facilitate communication between Google Sheets and the Express.js backend, to query, update, and manage data in Google Sheets programmatically.
 
-Scripts for Automation:
-I'm using scripts within Google Sheets to automate tasks such as ID generation and timestamp creation.
+APP Scripts for Automation:
+
+I'm using App scripts within Google Sheets to automate tasks such as ID generation and timestamp creation.
 Timestamp Generation is used to record when a cell or row was last modified for accurate synchronization.
 This is done to identify and update only the modified data, reducing the need to process the entire sheet each time.
 
-Initial Focus:
+## Initial Focus:
 
 CRUD Operations:
 
@@ -95,3 +98,7 @@ Testing and Validation:
 Conduct thorough testing to validate the synchronization logic and ensure data consistency.
 Use sample datasets and edge cases to verify that CRUD operations and timestamp-based updates work as expected.
 
+## MY PROGRESS:
+I was able to complete all primary goals which were part of my inital focus. Additionally, I was also able to establish efficient modifications since the sheet or db is only updated using "Id", which removes the necessity of going through the whole db or sheet.
+
+The biggest challenge I faced was to sync the sheet on updating the db. I considered using triggers for this, but the issue is that these triggers activate every time there's a change in the sheet, which creates a loop since the database updates also trigger the sync process. To tackle this issue, I came up with a solution to efficiently enable and disable these triggers, which seemed like the easiest choice with the time left.
