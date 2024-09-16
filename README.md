@@ -102,3 +102,6 @@ Use sample datasets and edge cases to verify that CRUD operations and timestamp-
 I was able to complete all primary goals which were part of my inital focus. Additionally, I was also able to establish efficient modifications since the sheet or db is only updated using "Id", which removes the necessity of going through the whole db or sheet.
 
 The biggest challenge I faced was to sync the sheet on updating the db. I considered using triggers for this, but the issue is that these triggers activate every time there's a change in the sheet, which creates a loop since the database updates also trigger the sync process. To tackle this issue, I came up with a solution to efficiently enable and disable these triggers, which seemed like the easiest choice with the time left.
+
+VIDEO LINK:
+https://drive.google.com/file/d/1l21aS6cnY_QrCQ5ZpGrHTVJ0iDCuoFXh/view?usp=sharing
