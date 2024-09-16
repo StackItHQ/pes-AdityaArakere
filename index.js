@@ -1,5 +1,9 @@
 const express = require('express');
 const { syncSheetToDb } = require('./services/syncService');
+const { syncDbChangesToSheet } = require('./services/dbChangeListener');
+
+// Sync DB changes to Google Sheets every 5 seconds
+setInterval(syncDbChangesToSheet, 10000); // Check for changes every 5 seconds
 
 const app = express();
 app.use(express.json());

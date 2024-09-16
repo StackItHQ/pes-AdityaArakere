@@ -3,6 +3,7 @@ const { getClient } = require('../config/googleSheets');
 const { getLastSyncTimestamp, setLastSyncTimestamp } = require('./timestampService');
 const { createTable, tableExists, getColumnNames, alterTable } = require('./tableService');
 const db = require('../config/db');
+const { disableTriggers, enableTriggers } = require('./tableService');
 
 const googleSheets = google.sheets({ version: "v4" });
 
@@ -20,8 +21,11 @@ const getColumnCount = async (client, spreadsheetId) => {
         auth: client
     });
 
-    const headers = response.data.values[0];
-    return headers ? headers.length : 0;
+    const headers = response.data.values[0].filter(header => header && header.trim() !== '');
+    console.log("Filtered headers are:", headers);
+
+    // Return the length of non-empty headers
+    return headers.length;
 };
 
 // Function to sync Google Sheet to DB
@@ -30,52 +34,61 @@ const syncSheetToDb = async () => {
         const client = await getClient();
         const spreadsheetId = "1P6kgofltfShrdu6UaoL6wtuoE5CybZMQU37qXcLvC74";
 
+        await disableTriggers();
+
         // Get the number of columns
         const columnCount = await getColumnCount(client, spreadsheetId);
-        const range = `Sheet1!A:${String.fromCharCode(65 + columnCount - 1)}`; // Construct range dynamically
+        const dynamicRange = `Sheet1!A:${String.fromCharCode(65 + columnCount - 1)}`; // Dynamic columns range
+        const timestampRange = `Sheet1!Z:Z`; // Separate range for the timestamp (Z column)
 
-        // Read rows from spreadsheet
-        const response = await googleSheets.spreadsheets.values.get({
+        // Read rows from spreadsheet (dynamic columns)
+        const dynamicResponse = await googleSheets.spreadsheets.values.get({
             spreadsheetId,
-            range,
+            range: dynamicRange,
             auth: client,
         });
 
-        const rows = response.data.values;
+        // Read timestamp column (Z)
+        const timestampResponse = await googleSheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: timestampRange,
+            auth: client,
+        });
+
+        const dynamicRows = dynamicResponse.data.values;
+        const timestampRows = timestampResponse.data.values;
         const lastSyncTimestamp = getLastSyncTimestamp();
 
         console.log('Last Sync Timestamp:', lastSyncTimestamp);
-        console.log('Fetched Rows:', rows);
+        console.log('Fetched Rows:', dynamicRows);
 
-        if (rows.length) {
-            // Assuming the first row contains headers
-            const headers = rows[0];
-            const newRows = rows.slice(1);
+        if (dynamicRows.length) {
+            // Assuming the first row contains headers (for dynamic columns)
+            const headers = dynamicRows[0];
+            const newRows = dynamicRows.slice(1);
 
             // Check if the table exists; if not, create it
             const tableExistsFlag = await tableExists();
             if (!tableExistsFlag) {
+                // console.log('Table does not exist. Creating...', headers);
                 await createTable(headers);
             } else {
                 // Update table schema based on new headers
                 const existingColumns = await getColumnNames();
-                const newColumns = headers.slice(0, -1);
+                const newColumns = headers;
                 console.log('Existing Columns:', existingColumns);
                 console.log('New Columns:', newColumns);
                 await alterTable(existingColumns, newColumns);
             }
 
-            const newData = newRows.map(row => {
+            const newData = newRows.map((row, index) => {
                 let rowData = {};
-                headers.forEach((header, index) => {
-                    if (index < headers.length - 1) { // All columns except the last one
-                        rowData[header] = row[index] || ''; // Handle missing values
-                    }
+                headers.forEach((header, columnIndex) => {
+                    rowData[header] = row[columnIndex] || ''; // Handle missing values
                 });
-                // Explicitly handle the last column as 'timestamp'
-                if (row.length > 0) {
-                    rowData['timestamp'] = parseDate(row[headers.length - 1]); // Convert last column to timestamp
-                }
+                // Combine dynamic data with the timestamp (from column Z)
+                const timestamp = timestampRows[index + 1] ? timestampRows[index + 1][0] : null;
+                rowData['timestamp'] = parseDate(timestamp); // Convert timestamp to Date object
                 return rowData;
             });
 
@@ -175,6 +188,9 @@ const syncSheetToDb = async () => {
     } catch (error) {
         console.error('Error reading from Google Sheets:', error);
         throw new Error('Error reading from Google Sheets');
+    } finally {
+        // Re-enable triggers
+        await enableTriggers();
     }
 };
 
